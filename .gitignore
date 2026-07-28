@@ -1,8 +1,47 @@
+# ==========================
+# macOS
+# ==========================
 .DS_Store
-/.build
-/Packages
+
+# ==========================
+# Xcode User Data
+# ==========================
+*.xcuserstate
 xcuserdata/
+
+# ==========================
+# Build Artifacts
+# ==========================
+.build/
 DerivedData/
-.swiftpm/configuration/registries.json
+
+# ==========================
+# Swift Package Manager
+# ==========================
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-.netrc
+.swiftpm/xcode/xcuserdata/
+
+# ==========================
+# Playground
+# ==========================
+timeline.xctimeline
+playground.xcworkspace
+
+# ==========================
+# Fastlane (if added later)
+# ==========================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# ==========================
+# Coverage
+# ==========================
+*.profdata
+*.profraw
+
+# ==========================
+# Logs
+# ==========================
+*.log
