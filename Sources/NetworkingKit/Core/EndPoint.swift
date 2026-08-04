@@ -10,6 +10,10 @@ import Foundation
 /// Represents an HTTP Endpoint.
 
 public protocol Endpoint {
+    /// Relative path of the endpoint.
+    ///
+    /// - Important:
+    ///   Must begin with "/".
     var path: String { get }
     var queryItems: [URLQueryItem] { get }
     var method: HTTPMethod { get }
