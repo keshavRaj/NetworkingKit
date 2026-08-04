@@ -31,7 +31,7 @@ public enum RequestBuilder {
         urlComponents.scheme = baseURL.scheme
         urlComponents.host = baseURL.host
         urlComponents.path = removeTrailingSlash(from: baseURL.path) + endpoint.path
-        urlComponents.queryItems = endpoint.queryItems
+        urlComponents.queryItems = endpoint.queryItems.isEmpty ? nil : endpoint.queryItems
         return urlComponents
     }
     
