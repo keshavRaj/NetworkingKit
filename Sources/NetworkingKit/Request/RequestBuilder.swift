@@ -9,20 +9,20 @@ import Foundation
 /// Builds URLRequest to be sent to the URLSession.
 
 public enum RequestBuilder {
-    public static func build(_ endPoint: any Endpoint, baseURL: URL) throws  -> URLRequest {
-        guard let url = buildURLComponents(endPoint, baseURL: baseURL).url else {
+    public static func build(_ endpoint: any Endpoint, baseURL: URL) throws  -> URLRequest {
+        guard let url = buildURLComponents(endpoint, baseURL: baseURL).url else {
             throw NetworkError.invalidURL
         }
         var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = endPoint.method.rawValue
+        urlRequest.httpMethod = endpoint.method.rawValue
         
         /// Intentionally do not restrict request bodies based on HTTP method.
         /// Some servers accept request bodies for methods such as GET or DELETE.
         /// RequestBuilder builds the request described by the Endpoint without
         /// enforcing application-specific HTTP semantics.
-        try applyBody(endPoint.body, to: &urlRequest)
-        applyHeaders(endPoint.headers, to: &urlRequest)
-        
+        try applyBody(endpoint.body, to: &urlRequest)
+        applyHeaders(endpoint.headers, to: &urlRequest)
+      
         return urlRequest
     }
     
