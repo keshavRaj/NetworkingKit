@@ -21,8 +21,9 @@ public enum RequestBuilder {
         /// RequestBuilder builds the request described by the Endpoint without
         /// enforcing application-specific HTTP semantics.
         try applyBody(endPoint.body, to: &urlRequest)
+        applyHeaders(endPoint.headers, to: &urlRequest)
         
-        return URLRequest(url: url)
+        return urlRequest
     }
     
     private static func buildURLComponents(_ endpoint: any Endpoint, baseURL: URL) -> URLComponents {
@@ -45,6 +46,12 @@ public enum RequestBuilder {
             }
         } catch {
             throw NetworkError.serializationFailed(error: error)
+        }
+    }
+    
+    private static func applyHeaders(_ headers: [String: String], to request: inout URLRequest) {
+        for (header, value) in headers {
+            request.addValue(value, forHTTPHeaderField: header)
         }
     }
     
