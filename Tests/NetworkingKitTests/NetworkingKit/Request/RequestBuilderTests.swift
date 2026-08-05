@@ -18,6 +18,7 @@ final class RequestBuilderTests: XCTestCase {
         baseURL = URL(string: "https://leetcode.com")!
     }
     
+    // MARK:  -URL Tests
     func test_build_returnsURLRequestForValidEndpoint() throws {
         let endpoint = TestEndpoint(path: path, method: .get)
         let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
@@ -40,6 +41,13 @@ final class RequestBuilderTests: XCTestCase {
         XCTAssertEqual(request.url, URL(string: "https://leetcode.com/problems/permutation-string/history?page=1&limit=20"))
     }
     
+    func test_build_noQueryItems_doesNotAppendQueryItemsToURL() throws {
+        let endpoint = TestEndpoint(path: path, method: .get)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.url, URL(string: "https://leetcode.com/problems/permutation-string/history"))
+    }
+    
+    // MARK: -HTTP methods tests
     func test_build_appliesGETMethodToRequest() throws {
         let endpoint = TestEndpoint(path: path, method: .get)
         let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
@@ -68,5 +76,67 @@ final class RequestBuilderTests: XCTestCase {
         let endpoint = TestEndpoint(path: path, method: .patch)
         let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
         XCTAssertEqual(request.httpMethod, "PATCH")
+    }
+    
+    // MARK: -Header Tests
+    func test_build_appliesHeadersToRequest() throws {
+        let headers: [String: String] = ["Authorization": "token", "Content-Type": "application/json"]
+        let endpoint = TestEndpoint(path: path,method: .get, headers: headers)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.allHTTPHeaderFields, headers)
+    }
+    
+    // MARK: -Body Tests
+    func test_build_noBody_doesNotCreateBodyToRequest() throws {
+        let endpoint = TestEndpoint(path: path, method: .get)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertNil(request.httpBody)
+    }
+    
+    func test_build_encodesJSONBody() throws {
+        let testUser = TestUser(age: 20, name: "Keshav")
+        let requestBody = RequestBody.json(testUser)
+        let endpoint = TestEndpoint(path: path, method: .post, body: requestBody)
+        
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        
+        let httpBody = try XCTUnwrap(request.httpBody)
+        let decodedUser = try JSONDecoder().decode(TestUser.self, from: httpBody)
+        
+        XCTAssertEqual(decodedUser, testUser)
+    }
+    
+    // MARK: -Error tests
+    
+    func test_build_invalidJsonBodyThrowsSerializationFailed() {
+        let endpoint = TestEndpoint(path: path,
+                                    method: .post,
+                                    body: .json(FailingEncodable()))
+        XCTAssertThrowsError(
+            try RequestBuilder.build(endpoint, baseURL: baseURL)) { error in
+                switch error {
+                case NetworkError.serializationFailed(let serializationError):
+                    guard let encodingError = serializationError as? FailingEncodable.TestError else {
+                        XCTFail("Expected FailingEncodable.TestError")
+                        return
+                    }
+                    XCTAssertEqual(encodingError, .intentionalFail)
+                default :
+                    XCTFail("Expected serializationFailed error")
+                }
+            }
+    }
+    
+    func test_build_invalidURLThrowsInvalidURL() {
+        let endPoint = TestEndpoint(path: "hello")
+        XCTAssertThrowsError(
+            try RequestBuilder.build(endPoint, baseURL: baseURL)) { error in
+                switch error {
+                case NetworkError.invalidURL:
+                    break
+                default :
+                    XCTFail("Expected invalidURL error")
+                }
+            }
     }
 }
