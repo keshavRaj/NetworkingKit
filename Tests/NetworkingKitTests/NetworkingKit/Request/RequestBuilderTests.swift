@@ -39,5 +39,34 @@ final class RequestBuilderTests: XCTestCase {
         let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
         XCTAssertEqual(request.url, URL(string: "https://leetcode.com/problems/permutation-string/history?page=1&limit=20"))
     }
-
+    
+    func test_build_appliesGETMethodToRequest() throws {
+        let endpoint = TestEndpoint(path: path, method: .get)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.httpMethod, "GET")
+    }
+    
+    func test_build_appliesPOSTMethodToRequest() throws {
+        let endpoint = TestEndpoint(path: path, method: .post)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.httpMethod, "POST")
+    }
+    
+    func test_build_appliesPUTMethodToRequest() throws {
+        let endpoint = TestEndpoint(path: path, method: .put)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.httpMethod, "PUT")
+    }
+    
+    func test_build_appliesDELETEMethodToRequest() throws {
+        let endpoint = TestEndpoint(path: path, method: .delete)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.httpMethod, "DELETE")
+    }
+    
+    func test_build_appliesPATCHMethodToRequest() throws {
+        let endpoint = TestEndpoint(path: path, method: .patch)
+        let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
+        XCTAssertEqual(request.httpMethod, "PATCH")
+    }
 }
