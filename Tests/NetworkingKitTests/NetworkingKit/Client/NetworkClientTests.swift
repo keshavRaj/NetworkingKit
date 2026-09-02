@@ -202,12 +202,14 @@ final class NetworkClientTests: XCTestCase {
         let client = NetworkClient(executor: mockExecutor, configuration: configuration)
         
         do {
-            let _ = try await client.send(endpoint)
-            XCTFail("Expected URLError.timedOut to be thrown")
+            _ = try await client.send(endpoint)
+            XCTFail("Expected NetworkError.transport wrapping URLError(.timedOut)")
         } catch  {
-            guard let timeoutError = error as? URLError, timeoutError.code == .timedOut else {
-                XCTFail("Expected URLError.timedOut to be thrown")
-                return
+            switch error {
+            case NetworkError.transport(let error):
+                XCTAssertEqual(error.code, .timedOut)
+            default :
+                XCTFail("Expected NetworkError.transport wrapping URLError(.timedOut)")
             }
         }
     }

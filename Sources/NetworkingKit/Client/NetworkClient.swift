@@ -26,7 +26,13 @@ public struct NetworkClient {
     
     public func send(_ endPoint: any Endpoint) async throws -> EmptyResponse {
         let request = try RequestBuilder.build(endPoint, baseURL: configuration.baseURL)
-        let (_, urlResponse) = try await executor.execute(request)
+        let urlResponse: URLResponse
+        do {
+            (_, urlResponse) = try await executor.execute(request)
+            
+        } catch let error as URLError {
+            throw NetworkError.transport(error: error)
+        }
         let statusCode = try validate(urlResponse)
         return EmptyResponse(statusCode: statusCode)
     }
