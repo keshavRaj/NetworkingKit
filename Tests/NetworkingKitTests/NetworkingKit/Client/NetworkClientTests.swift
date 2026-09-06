@@ -29,8 +29,9 @@ final class NetworkClientTests: XCTestCase {
         return NetworkClient(executor: mockExecutor, configuration: configuration)
     }
     
+    // MARK: - Empty Response
     
-    // MARK: -Successful response tests
+    // MARK: -Successful responses
     
     func test_send_successfulResponse_returnsCorrectStatusCode() async throws {
         let statusCode = 200
@@ -50,7 +51,7 @@ final class NetworkClientTests: XCTestCase {
         XCTAssertEqual(response.statusCode, statusCode)
     }
     
-    // MARK: - Unsuccessful response tests
+    // MARK: - HTTP Errors
     
     func test_send_401StatusCode_throwsHttpErrorWithUnauthorizedCategory() async {
         let statusCode = 401
@@ -177,7 +178,8 @@ final class NetworkClientTests: XCTestCase {
             }
         }
     }
-    
+  
+    // MARK: - Response Errors
     func test_send_urlResponse_throwsInvalidResponseError() async {
         let urlResponse = URLResponse()
         let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse)
@@ -196,6 +198,7 @@ final class NetworkClientTests: XCTestCase {
         }
     }
     
+    // MARK: - Transport Errors
     func test_send_timeoutError_throwsTimeoutError() async {
         let mockedError = URLError(.timedOut)
         let mockExecutor = MockRequestExecutor(mockedResponse: URLResponse(), mockedError: mockedError)
@@ -210,6 +213,144 @@ final class NetworkClientTests: XCTestCase {
                 XCTAssertEqual(error.code, .timedOut)
             default :
                 XCTFail("Expected NetworkError.transport wrapping URLError(.timedOut)")
+            }
+        }
+    }
+    
+    // MARK: - Decodable Responses
+    // MARK: - Successful Responses
+    
+    func test_send_decodableResponse_decodesResponse() async throws {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 200,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "application/json"])!
+        let testUser = TestUser(age: 1, name: "test")
+        let data = try JSONEncoder().encode(testUser)
+        let mockExecutor = MockRequestExecutor(mockedData: data,
+                                               mockedResponse: urlResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        
+        let response: NetworkResponse<TestUser> = try await client.send(endpoint)
+        XCTAssertEqual(response.value, testUser)
+        XCTAssertEqual(response.statusCode, 200)
+    }
+    
+    func test_send_contentTypeWithCharset_acceptsExpectedContentType() async throws {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 200,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "application/json; charset=utf-8"])!
+        let testUser = TestUser(age: 1, name: "test")
+        let data = try JSONEncoder().encode(testUser)
+        let mockExecutor = MockRequestExecutor(mockedData: data,
+                                               mockedResponse: urlResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        
+        let response: NetworkResponse<TestUser> = try await client.send(endpoint)
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(response.value, testUser)
+    }
+    
+    // MARK: - Decoding Errors
+    
+    func test_send_invalidDecodableResponse_throwsDecodingFailedError() async throws {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 200,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "application/json"])!
+        let testUser = TestUser(age: 1, name: "test")
+        let data = try JSONEncoder().encode(testUser)
+        let mockExecutor = MockRequestExecutor(mockedData: data,
+                                               mockedResponse: urlResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        struct SomeDecodable: Decodable {
+            let id: String
+        }
+        
+        do {
+            let response: NetworkResponse<SomeDecodable> = try await client.send(endpoint)
+            XCTFail("Expected decodingFailed error, but got \(response)")
+        } catch {
+            switch error {
+            case NetworkError.decodingFailed:
+                break
+            default:
+                XCTFail("Expected decodingFailed error, but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - Content-Type errors
+    
+    func test_send_unexpectedContentType_throwsUnexpectedContentTypeError() async  {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 200,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "text/html"])!
+        let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        
+        do {
+            let response: NetworkResponse<TestUser> = try await client.send(endpoint)
+            XCTFail("Expected unexpectedContentType error, but got \(response)")
+        } catch {
+            switch error {
+            case NetworkError.unexpectedContentType(let expected, let received):
+                XCTAssertEqual(expected, "application/json")
+                XCTAssertEqual(received, "text/html")
+            default:
+                XCTFail("Expected unexpectedContentType error, but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - HTTP Errors
+    
+    func test_send_decodableResponseWith500Status_throwsHttpErrorBeforeDecoding() async {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 500,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "application/json"])!
+        let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        
+        do {
+            let response: NetworkResponse<TestUser> = try await client.send(endpoint)
+            XCTFail("Expected error but got \(response)")
+        } catch {
+            switch error {
+            case NetworkError.httpError(let statusCode, let category):
+                XCTAssertEqual(statusCode, 500)
+                XCTAssertEqual(category, .serverError)
+            default:
+                XCTFail("Expected HttpError but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - Transport Errors
+    
+    func test_send_decodableResponseWithTimeoutError_throwsTimeoutError() async {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 200,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "application/json"])!
+        let mockedError = URLError(.timedOut)
+        let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse,
+                                               mockedError: mockedError)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        
+        do {
+            let response: NetworkResponse<TestUser> = try await client.send(endpoint)
+            XCTFail("Expected NetworkError.transport.timedOut but got \(response)")
+        } catch {
+            switch error {
+            case NetworkError.transport(let error):
+                XCTAssertEqual(error.code, .timedOut)
+                
+            default :
+                XCTFail("Expected NetworkError.transport.timedOut but got \(error)")
             }
         }
     }

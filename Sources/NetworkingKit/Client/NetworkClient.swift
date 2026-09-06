@@ -24,6 +24,27 @@ public struct NetworkClient {
         self.configuration = configuration
     }
     
+    public func send<T: Decodable>(_ endPoint: any Endpoint) async throws -> NetworkResponse<T> {
+        let request = try RequestBuilder.build(endPoint, baseURL: configuration.baseURL)
+        let urlResponse: URLResponse
+        let data: Data
+        do {
+            (data, urlResponse) = try await executor.execute(request)
+        } catch let error as URLError {
+            throw NetworkError.transport(error: error)
+        }
+        let statusCode = try validate(urlResponse)
+        guard urlResponse.mimeType == endPoint.expectedContentType.rawValue else {
+            throw NetworkError.unexpectedContentType(expected: endPoint.expectedContentType.rawValue, received: urlResponse.mimeType ?? "unknown")
+        }
+        do {
+            let response = try JSONDecoder().decode(T.self, from: data)
+            return NetworkResponse(value: response, statusCode: statusCode)
+        } catch let error as DecodingError {
+            throw NetworkError.decodingFailed(error: error)
+        }
+    }
+    
     public func send(_ endPoint: any Endpoint) async throws -> EmptyResponse {
         let request = try RequestBuilder.build(endPoint, baseURL: configuration.baseURL)
         let urlResponse: URLResponse
