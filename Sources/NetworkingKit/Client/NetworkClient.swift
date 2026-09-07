@@ -34,6 +34,9 @@ public struct NetworkClient {
             throw NetworkError.transport(error: error)
         }
         let statusCode = try validate(urlResponse)
+        guard statusCode != 204 else {
+            throw NetworkError.noContent
+        }
         guard urlResponse.mimeType == endPoint.expectedContentType.rawValue else {
             throw NetworkError.unexpectedContentType(expected: endPoint.expectedContentType.rawValue, received: urlResponse.mimeType ?? "unknown")
         }

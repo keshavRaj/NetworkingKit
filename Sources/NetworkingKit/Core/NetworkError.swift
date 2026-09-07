@@ -16,5 +16,6 @@ public enum NetworkError: Error {
     case unexpectedContentType(expected: String, received: String)
     case httpError(statusCode: Int, category: HTTPStatusCategory)
     case decodingFailed(error: DecodingError)
+    case noContent
 }
 
