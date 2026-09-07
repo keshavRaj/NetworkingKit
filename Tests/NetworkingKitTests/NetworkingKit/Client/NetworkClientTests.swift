@@ -51,6 +51,15 @@ final class NetworkClientTests: XCTestCase {
         XCTAssertEqual(response.statusCode, statusCode)
     }
     
+    func test_send_statusCode204_returnsCorrectStatusCode() async throws {
+        let statusCode = 204
+        let client = makeClient(statusCode: statusCode)
+        
+        let response = try await client.send(endpoint)
+        
+        XCTAssertEqual(response.statusCode, statusCode)
+    }
+    
     // MARK: - HTTP Errors
     
     func test_send_401StatusCode_throwsHttpErrorWithUnauthorizedCategory() async {
@@ -351,6 +360,29 @@ final class NetworkClientTests: XCTestCase {
                 
             default :
                 XCTFail("Expected NetworkError.transport.timedOut but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - NoContent Error
+        func test_send_statusCode204_throwsNoContentError() async {
+            let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                              statusCode: 204,
+                                              httpVersion: nil,
+                                              headerFields: ["Content-Type": "application/json"])!
+            let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse)
+            let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        
+        do {
+            let response: NetworkResponse<TestUser> = try await client.send(endpoint)
+            XCTFail("Expected NetworkError.noContent but got \(response)")
+        } catch {
+            switch error {
+                case NetworkError.noContent:
+                break
+                
+            default :
+                XCTFail("Expected NetworkError.noContent but got \(error)")
             }
         }
     }
