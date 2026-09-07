@@ -243,6 +243,7 @@ final class NetworkClientTests: XCTestCase {
         let response: NetworkResponse<TestUser> = try await client.send(endpoint)
         XCTAssertEqual(response.value, testUser)
         XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(response.contentType, "application/json")
     }
     
     func test_send_contentTypeWithCharset_acceptsExpectedContentType() async throws {
@@ -259,6 +260,7 @@ final class NetworkClientTests: XCTestCase {
         let response: NetworkResponse<TestUser> = try await client.send(endpoint)
         XCTAssertEqual(response.statusCode, 200)
         XCTAssertEqual(response.value, testUser)
+        XCTAssertEqual(response.contentType, "application/json")
     }
     
     // MARK: - Decoding Errors

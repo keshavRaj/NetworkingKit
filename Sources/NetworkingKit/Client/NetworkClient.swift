@@ -42,7 +42,7 @@ public struct NetworkClient {
         }
         do {
             let response = try JSONDecoder().decode(T.self, from: data)
-            return NetworkResponse(value: response, statusCode: statusCode)
+            return NetworkResponse(value: response, statusCode: statusCode, contentType: urlResponse.mimeType)
         } catch let error as DecodingError {
             throw NetworkError.decodingFailed(error: error)
         }

@@ -10,4 +10,5 @@
 public struct NetworkResponse<T> {
     public let value: T
     public let statusCode: Int
+    public let contentType: String?
 }
