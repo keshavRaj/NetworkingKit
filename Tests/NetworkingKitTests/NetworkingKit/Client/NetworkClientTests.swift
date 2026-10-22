@@ -187,7 +187,7 @@ final class NetworkClientTests: XCTestCase {
             }
         }
     }
-  
+    
     // MARK: - Response Errors
     func test_send_urlResponse_throwsInvalidResponseError() async {
         let urlResponse = URLResponse()
@@ -243,6 +243,7 @@ final class NetworkClientTests: XCTestCase {
         let response: NetworkResponse<TestUser> = try await client.send(endpoint)
         XCTAssertEqual(response.value, testUser)
         XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(response.contentType, "application/json")
     }
     
     func test_send_contentTypeWithCharset_acceptsExpectedContentType() async throws {
@@ -259,6 +260,7 @@ final class NetworkClientTests: XCTestCase {
         let response: NetworkResponse<TestUser> = try await client.send(endpoint)
         XCTAssertEqual(response.statusCode, 200)
         XCTAssertEqual(response.value, testUser)
+        XCTAssertEqual(response.contentType, "application/json")
     }
     
     // MARK: - Decoding Errors
@@ -365,24 +367,126 @@ final class NetworkClientTests: XCTestCase {
     }
     
     // MARK: - NoContent Error
-        func test_send_statusCode204_throwsNoContentError() async {
-            let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
-                                              statusCode: 204,
-                                              httpVersion: nil,
-                                              headerFields: ["Content-Type": "application/json"])!
-            let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse)
-            let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+    func test_send_statusCode204_throwsNoContentError() async {
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 204,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": "application/json"])!
+        let mockExecutor = MockRequestExecutor(mockedResponse: urlResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
         
         do {
             let response: NetworkResponse<TestUser> = try await client.send(endpoint)
             XCTFail("Expected NetworkError.noContent but got \(response)")
         } catch {
             switch error {
-                case NetworkError.noContent:
+            case NetworkError.noContent:
                 break
                 
             default :
                 XCTFail("Expected NetworkError.noContent but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - Data response
+    // MARK: - Successful response
+    
+    func test_data_successfulResponse_returnsRawData() async throws {
+        let data = Data([0x01, 0x02, 0x03])
+        let contentType = "image/jpeg"
+        let urlResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                          statusCode: 200,
+                                          httpVersion: nil,
+                                          headerFields: ["Content-Type": contentType])!
+        let mockExecutor = MockRequestExecutor(mockedData: data,
+                                               mockedResponse: urlResponse)
+        let networkClient = NetworkClient(executor: mockExecutor, configuration: configuration)
+        let response = try await networkClient.data(for: endpoint)
+        XCTAssertEqual(response.value, data)
+        XCTAssertEqual(response.contentType, contentType)
+        XCTAssertEqual(response.statusCode, 200)
+    }
+    
+    // MARK: - Transport Error
+    func test_data_urlError_throwsTransportError() async {
+        let mockedResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                             statusCode: 200,
+                                             httpVersion: nil,
+                                             headerFields: nil)!
+        let mockedError = URLError(.notConnectedToInternet)
+        let mockExecutor = MockRequestExecutor(mockedResponse: mockedResponse, mockedError: mockedError)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        do {
+            let response = try await client.data(for: endpoint)
+            XCTFail("Expected NetworkError.transport, but got \(response)")
+        } catch {
+            switch error {
+            case  NetworkError.transport(let associatedError):
+                XCTAssertEqual(associatedError.code, .notConnectedToInternet)
+            default:
+                XCTFail("Expected NetworkError.transport, but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - Invalid Response Error
+    func test_data_invalidResponse_throwsInvalidResponse() async {
+        let mockedResponse = URLResponse()
+        let mockExecutor = MockRequestExecutor(mockedResponse: mockedResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        do {
+            let response = try await client.data(for: endpoint)
+            XCTFail("Expected NetworkError.invalidResponse, but got \(response)")
+        } catch {
+            switch error {
+            case  NetworkError.invalidResponse:
+                break
+            default:
+                XCTFail("Expected NetworkError.invalidResponse, but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - No Content
+    func test_data_noContent_throwsNoContent() async {
+        let mockedResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                             statusCode: 204,
+                                             httpVersion: nil,
+                                             headerFields: nil)!
+        let mockExecutor = MockRequestExecutor(mockedResponse: mockedResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        do {
+            let response = try await client.data(for: endpoint)
+            XCTFail("Expected NetworkError.noContent, but got \(response)")
+        } catch {
+            switch error {
+            case  NetworkError.noContent:
+                break
+            default:
+                XCTFail("Expected NetworkError.noContent, but got \(error)")
+            }
+        }
+    }
+    
+    // MARK: - HTTP Error
+    func test_data_serverError_throwsHTTPError() async {
+        let mockedResponse = HTTPURLResponse(url: URL(string: "https://www.example.com")!,
+                                             statusCode: 500,
+                                             httpVersion: nil,
+                                             headerFields: nil)!
+        let mockExecutor = MockRequestExecutor(mockedResponse: mockedResponse)
+        let client = NetworkClient(executor: mockExecutor, configuration: configuration)
+        do {
+            let response = try await client.data(for: endpoint)
+            XCTFail("Expected NetworkError.httpError, but got \(response)")
+        } catch {
+            switch error {
+            case  NetworkError.httpError(let statusCode, let category):
+                XCTAssertEqual(statusCode, 500)
+                XCTAssertEqual(category, .serverError)
+            default:
+                XCTFail("Expected NetworkError.httpError, but got \(error)")
             }
         }
     }

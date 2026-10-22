@@ -42,7 +42,7 @@ public struct NetworkClient {
         }
         do {
             let response = try JSONDecoder().decode(T.self, from: data)
-            return NetworkResponse(value: response, statusCode: statusCode)
+            return NetworkResponse(value: response, statusCode: statusCode, contentType: urlResponse.mimeType)
         } catch let error as DecodingError {
             throw NetworkError.decodingFailed(error: error)
         }
@@ -59,6 +59,24 @@ public struct NetworkClient {
         }
         let statusCode = try validate(urlResponse)
         return EmptyResponse(statusCode: statusCode)
+    }
+    
+    public func data(for endPoint: any Endpoint) async throws -> NetworkResponse<Data> {
+        let request = try RequestBuilder.build(endPoint, baseURL: configuration.baseURL)
+        let data: Data
+        let urlResponse: URLResponse
+        do {
+            (data, urlResponse) = try await executor.execute(request)
+        } catch let error as URLError {
+            throw NetworkError.transport(error: error)
+        }
+        let statusCode = try validate(urlResponse)
+        guard statusCode != 204 else {
+            throw NetworkError.noContent
+        }
+        return NetworkResponse(value: data,
+                               statusCode: statusCode,
+                               contentType: urlResponse.mimeType)
     }
     
     
