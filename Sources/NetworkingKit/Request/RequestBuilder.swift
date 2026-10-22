@@ -20,8 +20,8 @@ public enum RequestBuilder {
         /// Some servers accept request bodies for methods such as GET or DELETE.
         /// RequestBuilder builds the request described by the Endpoint without
         /// enforcing application-specific HTTP semantics.
-        try applyBody(endpoint.body, to: &urlRequest)
         applyHeaders(endpoint.headers, to: &urlRequest)
+        try applyBody(endpoint.body, to: &urlRequest)
       
         return urlRequest
     }
@@ -43,6 +43,10 @@ public enum RequestBuilder {
                 
             case .json(let body):
                 request.httpBody = try JSONEncoder().encode(body)
+
+            case .data(let raw, let mimeType):
+                request.httpBody = raw
+                request.setValue(mimeType.rawValue, forHTTPHeaderField: "Content-Type")
             }
         } catch {
             throw NetworkError.serializationFailed(error: error)
