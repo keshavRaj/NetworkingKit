@@ -61,6 +61,24 @@ public struct NetworkClient {
         return EmptyResponse(statusCode: statusCode)
     }
     
+    public func data(for endPoint: any Endpoint) async throws -> NetworkResponse<Data> {
+        let request = try RequestBuilder.build(endPoint, baseURL: configuration.baseURL)
+        let data: Data
+        let urlResponse: URLResponse
+        do {
+            (data, urlResponse) = try await executor.execute(request)
+        } catch let error as URLError {
+            throw NetworkError.transport(error: error)
+        }
+        let statusCode = try validate(urlResponse)
+        guard statusCode != 204 else {
+            throw NetworkError.noContent
+        }
+        return NetworkResponse(value: data,
+                               statusCode: statusCode,
+                               contentType: urlResponse.mimeType)
+    }
+    
     
     private func validate(_ response: URLResponse) throws -> Int {
         guard let httpResponse = response as? HTTPURLResponse else {
