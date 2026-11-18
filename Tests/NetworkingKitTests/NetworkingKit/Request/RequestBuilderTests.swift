@@ -86,7 +86,7 @@ final class RequestBuilderTests: XCTestCase {
         XCTAssertEqual(request.allHTTPHeaderFields, headers)
     }
     
-    // MARK: -Body Tests
+    // MARK: -Body Testsr
     func test_build_noBody_doesNotCreateBodyToRequest() throws {
         let endpoint = TestEndpoint(path: path, method: .get)
         let request = try RequestBuilder.build(endpoint, baseURL: baseURL)
@@ -106,6 +106,22 @@ final class RequestBuilderTests: XCTestCase {
         XCTAssertEqual(decodedUser, testUser)
     }
     
+    func test_build_dataBody_preservesBytesAndOverridesContentType() throws {
+        let headers: [String: String] = ["Authorization": "token", "Content-Type": "application/json"]
+        let data = Data([0x12, 0x13, 0x14])
+        let mimeType = MIMEType.custom("image/jpeg")
+        let requestBody = RequestBody.data(raw: data, mimeType: mimeType)
+        let endPoint = TestEndpoint(path: path, method: .post, headers: headers, body: requestBody)
+
+        let request = try RequestBuilder.build(endPoint, baseURL: baseURL)
+
+        let httpBody = try XCTUnwrap(request.httpBody)
+
+        XCTAssertEqual(httpBody, data)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "token")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), mimeType.rawValue)
+    }
+
     // MARK: -Error tests
     
     func test_build_invalidJsonBodyThrowsSerializationFailed() {

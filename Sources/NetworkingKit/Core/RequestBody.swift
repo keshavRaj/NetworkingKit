@@ -7,7 +7,10 @@
 
 /// Represents the body of an HTTP request.
 
+import Foundation
+
 public enum RequestBody {
     case none
     case json(any Encodable)
+    case data(raw: Data, mimeType: MIMEType)
 }
